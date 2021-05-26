@@ -13,6 +13,10 @@ import * as encoding from 'lib0/encoding';
 
 import { IDocumentProviderFactory } from './tokens';
 
+import { URLExt } from '@jupyterlab/coreutils';
+
+import { ServerConnection } from '@jupyterlab/services';
+
 /**
  * A class to provide Yjs synchronization over WebSocket.
  */
@@ -25,6 +29,37 @@ export class WebSocketProviderWithLocks extends WebsocketProvider {
   constructor(options: WebSocketProviderWithLocks.IOptions) {
     super(options.url, options.guid, options.ymodel.ydoc, {
       awareness: options.ymodel.awareness
+    });
+    const getUser = new Promise(async (resolve, reject) => {
+      const settings = ServerConnection.makeSettings();
+      const requestUrl = URLExt.join(
+        settings.baseUrl,
+        'auth',
+        'user'
+      );
+      let response: Response;
+      try {
+        response = await ServerConnection.makeRequest(requestUrl, {}, settings);
+      } catch (error) {
+        throw new ServerConnection.NetworkError(error);
+      }
+      let data: any = await response.text();
+      if (data.length > 0) {
+        try {
+          data = JSON.parse(data);
+        } catch (error) {
+          console.log('Not a JSON response body.', response);
+        }
+      }
+      if (!response.ok) {
+        throw new ServerConnection.ResponseError(response, data.message || data);
+      }
+      resolve(data);
+    });
+    getUser.then((data: any) => {
+      options.ymodel.awareness.setLocalStateField('user', {
+        name: data.name,
+      });
     });
     // Message handler that confirms when a lock has been acquired
     this.messageHandlers[127] = (
