@@ -9,11 +9,10 @@ from pathlib import Path
 from typing import Optional
 
 from jupyter_server.base.handlers import JupyterHandler
-
-# from jupyter_server.services.contents.fileio import (
-#     AsyncFileManagerMixin,
-#     FileManagerMixin,
-# )
+from jupyter_server.services.contents.fileio import (
+    AsyncFileManagerMixin,
+    FileManagerMixin,
+)
 from jupyter_server.utils import ensure_async
 from tornado import web
 from tornado.websocket import WebSocketHandler
@@ -55,6 +54,21 @@ class JupyterWebsocketServer(WebsocketServer):
 WEBSOCKET_SERVER = JupyterWebsocketServer(has_internal_ydoc=True, auto_clean_rooms=False)
 
 
+FILE_CHANGES = {}
+
+
+async def watch_root_directory():
+    async for changes in awatch(".", debug=True):
+        for change in changes:
+            _, path = change
+            abs_path = Path(path).resolve()
+            file_change = FILE_CHANGES[abs_path] = FILE_CHANGES.get(abs_path, asyncio.Event())
+            file_change.set()
+
+
+WATCH_ROOT_DIRECTORY_TASK = None
+
+
 class YjsEchoWebSocket(WebSocketHandler, JupyterHandler):
 
     saving_document: Optional[asyncio.Task]
@@ -82,6 +96,15 @@ class YjsEchoWebSocket(WebSocketHandler, JupyterHandler):
         return await super().get(*args, **kwargs)
 
     async def open(self, path):
+        global WATCH_ROOT_DIRECTORY_TASK
+        # can only watch file changes if local file system
+        # if/when https://github.com/jupyter-server/jupyter_server/pull/783 gets in,
+        # we will check for a contents manager ability to watch file changes
+        self.use_watchfiles = isinstance(
+            self.contents_manager, (FileManagerMixin, AsyncFileManagerMixin)
+        )
+        if self.use_watchfiles and WATCH_ROOT_DIRECTORY_TASK is None:
+            WATCH_ROOT_DIRECTORY_TASK = asyncio.create_task(watch_root_directory())
         self.path = path  # needed to be compatible with WebsocketServer (websocket.path)
         self._message_queue = asyncio.Queue()
         self.file_type, self.file_path = path.split(":", 1)
@@ -107,16 +130,12 @@ class YjsEchoWebSocket(WebSocketHandler, JupyterHandler):
                 self.room.document.observe(self.maybe_save_document)
 
     async def watch_file(self):
-        # can only watch file changes if local file system
-        # if/when https://github.com/jupyter-server/jupyter_server/pull/783 gets in,
-        # we will check for a contents manager ability to watch file changes
-        if False:  # isinstance(self.contents_manager, (FileManagerMixin, AsyncFileManagerMixin)):
+        if self.use_watchfiles:
             abs_path = Path(self.file_path).resolve()
-
-            def filter(change, path):
-                return Path(path).resolve() == abs_path
-
-            async for _ in awatch(abs_path.parent, watch_filter=filter):
+            while True:
+                file_change = FILE_CHANGES[abs_path] = FILE_CHANGES.get(abs_path, asyncio.Event())
+                await file_change.wait()
+                file_change.clear()
                 await self.maybe_load_document()
         else:
             while True:
@@ -181,9 +200,7 @@ class YjsEchoWebSocket(WebSocketHandler, JupyterHandler):
         model = await ensure_async(
             self.contents_manager.get(path, content=False, type=self.file_type)
         )
-        if (
-            True
-        ):  # not isinstance(self.contents_manager, (FileManagerMixin, AsyncFileManagerMixin)):
+        if not self.use_watchfiles:
             # we could not watch the file changes, so check if it is newer than last time it was saved
             if self.last_modified < model["last_modified"]:
                 # file changed on disk, let's revert
