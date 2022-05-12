@@ -152,7 +152,6 @@ export class YFile
 
   public static create(): YFile {
     const model = new YFile();
-    model.dirty = false;
     return model;
   }
 
@@ -374,7 +373,6 @@ export class YNotebook
     disableDocumentWideUndoRedo: boolean
   ): models.ISharedNotebook {
     const model = new YNotebook({ disableDocumentWideUndoRedo });
-    model.dirty = false;
     return model;
   }
 
