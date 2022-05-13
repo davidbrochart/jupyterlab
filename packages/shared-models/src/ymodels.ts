@@ -26,16 +26,6 @@ export interface IYText extends models.ISharedText {
 export type YCellType = YRawCell | YCodeCell | YMarkdownCell;
 
 export class YDocument<T> implements models.ISharedDocument {
-  get dirty(): boolean {
-    return this.ystate.get('dirty');
-  }
-
-  set dirty(value: boolean) {
-    this.transact(() => {
-      this.ystate.set('dirty', value);
-    }, false);
-  }
-
   /**
    * Perform a transaction. While the function f is called, all changes to the shared
    * document are bundled into a single event.
