@@ -240,7 +240,7 @@ jobs:
 
       - name: Execute memory leak tests
         id: memory_leaks
-        uses: jupyterlab/benchmarks/.github/actions/memory-leak@v1.1
+        uses: jupyterlab/benchmarks/.github/actions/memory-leak@v1.2.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           server_url: localhost:8888
