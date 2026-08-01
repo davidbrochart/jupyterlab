@@ -20,14 +20,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           # Need to fetch enough nodes to get the common ancestor - but don't want to fetch everything
           fetch-depth: 100
           persist-credentials: false
 
       - name: Base Setup
-        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@95d85449e4f3f352e261221f6529f8ed307f5728 # v1
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@b48fcdb87e70c45789abd80d4042b06641e47b46 # v1
         with:
           python_package_manager: "uv pip"
 
@@ -180,7 +180,7 @@ jobs:
 
       - name: Upload Galata Test assets
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: benchmark-assets
           path: |
@@ -207,12 +207,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
 
       - name: Base Setup
-        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@95d85449e4f3f352e261221f6529f8ed307f5728 # v1
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@b48fcdb87e70c45789abd80d4042b06641e47b46 # v1
         with:
           python_package_manager: "uv pip"
 
